@@ -1,0 +1,29 @@
+{
+    "bot_prefix": ".",
+    "applications_open": false,
+    "setup_message_id": null,
+    "channels": {
+        "applications": 0,
+        "review": 0,
+        "logs": 0,
+        "closed_redirect": 0
+    },
+    "roles": {
+        "staff": 0,
+        "applicant": 0,
+        "interviewer": 0
+    },
+    "categories": {
+        "tickets": 0,
+        "interviews": 0
+    },
+    "embeds": {
+        "setup_title": "📋 POSTULACIÓN OFICIAL",
+        "setup_description": "**¡Gracias por tu interés en formar parte de nuestro equipo!**\n\nAntes de comenzar, te recomendamos leer cada pregunta con atención y responder de manera clara, sincera y profesional. Tu solicitud será evaluada por el equipo administrativo y la decisión se basará en la calidad de tus respuestas, experiencia y compromiso con la comunidad.\n\n📌 **Requisitos Mínimos**\n\n• Tener entre **12 y 13 años o más**.\n• Contar con **micrófono** y dispositivos para realizar grabaciones.\n• Tener una buena disponibilidad horaria.\n• Demostrar madurez, humildad y respeto.\n• Mantener una buena ortografía y redacción.\n• Ser activo dentro del servidor y de Discord.\n\n**Buscamos personas responsables, activas y comprometidas**, capaces de contribuir al crecimiento y bienestar de la comunidad.",
+        "setup_color": 3447003,
+        "application_color": 15844367,
+        "review_color": 10181046,
+        "success_color": 3066993,
+        "error_color": 15158332
+    }
+}
