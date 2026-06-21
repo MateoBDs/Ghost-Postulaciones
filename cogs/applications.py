@@ -5,6 +5,16 @@ import asyncio
 from utils.config_manager import load_config, load_questions, update_config_value
 from utils.logger import log_application, send_log_embed
 
+config = load_config()
+staff_role_id = config['roles'].get('staff')
+
+if not any(role.id == staff_role_id for role in interaction.user.roles) \
+and not interaction.user.guild_permissions.administrator:
+    return await interaction.response.send_message(
+        "❌ No tienes permisos para revisar esto.",
+        ephemeral=True
+    )
+    
 class CloseTicketView(View):
     def __init__(self, bot):
         super().__init__(timeout=None)
@@ -112,7 +122,7 @@ class TakeReviewButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()
 
         message_id = interaction.message.id
 
