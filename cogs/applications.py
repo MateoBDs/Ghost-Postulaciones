@@ -155,6 +155,9 @@ class ApplicationView(View):
                 await channel.delete()
                 return
 
+        # ✅ AQUÍ YA TERMINÓ EL FORMULARIO
+        await try_dm(member, "📩 Tu postulación ha sido enviada. Estado: EN ESPERA.")
+
         log_application(member.id, member.name, answers)
 
         embed = discord.Embed(
