@@ -112,11 +112,13 @@ class TakeReviewButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
         message_id = interaction.message.id
 
         # ❌ ya está tomada
         if message_id in self.cog.reviews:
-            return await interaction.response.send_message(
+            return await interaction.followup.send(
                 f"❌ Ya está siendo revisada por <@{self.cog.reviews[message_id]}>",
                 ephemeral=True
             )
@@ -124,22 +126,29 @@ class TakeReviewButton(discord.ui.Button):
         # ✔ asignar revisor
         self.cog.reviews[message_id] = interaction.user.id
 
+        if not interaction.message.embeds:
+            return await interaction.followup.send(
+                "❌ Error: este mensaje no tiene embed",
+                ephemeral=True
+            )
+
         embed = interaction.message.embeds[0]
+
         embed.add_field(
             name="📋 Estado",
             value=f"En revisión por: {interaction.user.mention}",
             inline=False
         )
 
-        # 🟢 nuevos botones
         view = ReviewDecisionView(self.cog)
 
         await interaction.message.edit(embed=embed, view=view)
-        await interaction.response.send_message(
+
+        await interaction.followup.send(
             "✔ Has tomado la revisión",
             ephemeral=True
         )
-
+        
 class ReviewDecisionView(View):
     def __init__(self, cog):
         super().__init__(timeout=None)
