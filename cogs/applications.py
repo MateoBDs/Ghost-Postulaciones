@@ -126,7 +126,7 @@ class TakeReviewButton(discord.ui.Button):
 
         message_id = interaction.message.id
 
-        # permisos
+        # 1. permisos
         config = load_config()
         staff_role_id = config['roles'].get('staff')
 
@@ -134,39 +134,36 @@ class TakeReviewButton(discord.ui.Button):
         and not interaction.user.guild_permissions.administrator:
             return await interaction.followup.send("❌ No tienes permisos.", ephemeral=True)
 
-        # ya tomada
+        # 2. ya tomada
         if message_id in self.cog.reviews:
             return await interaction.followup.send(
                 f"❌ Ya está siendo revisada por <@{self.cog.reviews[message_id]}>",
                 ephemeral=True
             )
 
-        # asignar revisor
-        self.cog.reviews[message_id] = interaction.user.id
+        # 3. asignar revisor
+        self.cog.reviews[message_id] = {
+    "reviewer": interaction.user.id
+}
 
+        # 4. embed seguro
         if not interaction.message.embeds:
-            return await interaction.followup.send(
-                "❌ Error: este mensaje no tiene embed",
-                ephemeral=True
-            )
+            return await interaction.followup.send("❌ Error embed", ephemeral=True)
 
         embed = interaction.message.embeds[0]
-
         embed.add_field(
             name="📋 Estado",
             value=f"En revisión por: {interaction.user.mention}",
             inline=False
         )
 
+        # 5. cambiar botones
         view = ReviewDecisionView(self.cog)
 
         await interaction.message.edit(embed=embed, view=view)
 
-        await interaction.followup.send(
-            "✔ Has tomado la revisión",
-            ephemeral=True
-        )
-        
+        # 6. confirmación
+        await interaction.followup.send("✔ Has tomado la revisión", ephemeral=True)
 class ReviewDecisionView(View):
     def __init__(self, cog):
         super().__init__(timeout=None)
@@ -185,7 +182,16 @@ class RejectButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Rechazado", ephemeral=True)
+    message_id = interaction.message.id
+    review_data = self.cog.reviews.get(message_id)
+
+    if not review_data:
+        return await interaction.response.send_message("❌ Nadie tomó esta revisión.", ephemeral=True)
+
+    if review_data["reviewer"] != interaction.user.id:
+        return await interaction.response.send_message("❌ No eres el revisor.", ephemeral=True)
+
+    await interaction.response.send_message("❌ Rechazado", ephemeral=True)
 
 class InterviewButton(discord.ui.Button):
     def __init__(self, cog):
@@ -197,7 +203,16 @@ class InterviewButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Entrevista solicitada", ephemeral=True)
+    message_id = interaction.message.id
+    review_data = self.cog.reviews.get(message_id)
+
+    if not review_data:
+        return await interaction.response.send_message("❌ Nadie tomó esta revisión.", ephemeral=True)
+
+    if review_data["reviewer"] != interaction.user.id:
+        return await interaction.response.send_message("❌ No eres el revisor.", ephemeral=True)
+
+    await interaction.response.send_message("🎤 Entrevista solicitada", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, bot):
