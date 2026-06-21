@@ -28,12 +28,15 @@ class CloseTicketView(View):
         await interaction.channel.delete()
 
 class ReviewView(View):
-    def __init__(self, bot, applicant_id, answers):
+    def __init__(self, bot, cog, applicant_id, answers):
         super().__init__(timeout=None)
         self.bot = bot
+        self.cog = cog
         self.applicant_id = applicant_id
         self.answers = answers
 
+        self.add_item(TakeReviewButton(cog))
+        
     @discord.ui.button(label="Aprobar", style=discord.ButtonStyle.green, custom_id="approve_app")
     async def approve(self, interaction: discord.Interaction, button: Button):
         await self.handle_review(interaction, "Aprobado", discord.Color.green())
@@ -98,6 +101,76 @@ class ReviewView(View):
 
         channel = await guild.create_text_channel(f"entrevista-{applicant.name}", category=category, overwrites=overwrites)
         await channel.send(f"¡Hola {applicant.mention}! Has sido seleccionado para una entrevista. Un {f'<@&{interviewer_role_id}>' if interviewer_role_id else 'entrevistador'} se pondrá en contacto contigo pronto.", view=CloseTicketView(self.bot))
+        
+class TakeReviewButton(discord.ui.Button):
+    def __init__(self, cog):
+        super().__init__(
+            label="Tomar revisión",
+            style=discord.ButtonStyle.primary,
+            emoji="🟡"
+        )
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        message_id = interaction.message.id
+
+        # ❌ ya está tomada
+        if message_id in self.cog.reviews:
+            return await interaction.response.send_message(
+                f"❌ Ya está siendo revisada por <@{self.cog.reviews[message_id]}>",
+                ephemeral=True
+            )
+
+        # ✔ asignar revisor
+        self.cog.reviews[message_id] = interaction.user.id
+
+        embed = interaction.message.embeds[0]
+        embed.add_field(
+            name="📋 Estado",
+            value=f"En revisión por: {interaction.user.mention}",
+            inline=False
+        )
+
+        # 🟢 nuevos botones
+        view = ReviewDecisionView(self.cog)
+
+        await interaction.message.edit(embed=embed, view=view)
+        await interaction.response.send_message(
+            "✔ Has tomado la revisión",
+            ephemeral=True
+        )
+
+class ReviewDecisionView(View):
+    def __init__(self, cog):
+        super().__init__(timeout=None)
+        self.cog = cog
+
+        self.add_item(RejectButton(cog))
+        self.add_item(InterviewButton(cog))
+
+class RejectButton(discord.ui.Button):
+    def __init__(self, cog):
+        super().__init__(
+            label="Rechazar",
+            style=discord.ButtonStyle.danger,
+            emoji="❌"
+        )
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Rechazado", ephemeral=True)
+
+class InterviewButton(discord.ui.Button):
+    def __init__(self, cog):
+        super().__init__(
+            label="Solicitar entrevista",
+            style=discord.ButtonStyle.success,
+            emoji="🎤"
+        )
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Entrevista solicitada", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, bot):
@@ -192,6 +265,7 @@ class ApplicationView(View):
 class ApplicationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.reviews = {}  
 
     @commands.Cog.listener()
     async def on_ready(self):
