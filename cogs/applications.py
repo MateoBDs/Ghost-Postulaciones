@@ -260,7 +260,10 @@ class ApplicationView(View):
         if review_channel_id:
             review_channel = self.bot.get_channel(review_channel_id)
             if review_channel:
-                await review_channel.send(embed=embed_res, view=ReviewView(self.bot, member.id, answers))
+                await review_channel.send(
+    embed=embed_res,
+    view=ReviewView(self.bot, self, member.id, answers)
+)
 
 class ApplicationCog(commands.Cog):
     def __init__(self, bot):
