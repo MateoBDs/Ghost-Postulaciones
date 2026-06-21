@@ -4,18 +4,18 @@
     "setup_message_id": null,
     "channels": {
         "applications": 1517577630587556114,
-        "review": 0,
+        "review": 1518163660155912302,
         "logs": 1518161559111729252,
         "closed_redirect": 1517577630587556114
     },
     "roles": {
         "staff": 1517577628641661006,
         "applicant": 1518161924850712636,
-        "interviewer": 0 
+        "interviewer": 1517577628641661005 
     },
     "categories": {
         "tickets": 1518163187130699796,
-        "interviews": 0
+        "interviews": 1518163744427868200
     },
     "embeds": {
         "setup_title": "📋 POSTULACIÓN OFICIAL",
