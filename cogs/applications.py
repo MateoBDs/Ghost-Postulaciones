@@ -122,18 +122,26 @@ class TakeReviewButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
 
         message_id = interaction.message.id
 
-        # ❌ ya está tomada
+        # permisos
+        config = load_config()
+        staff_role_id = config['roles'].get('staff')
+
+        if not any(role.id == staff_role_id for role in interaction.user.roles) \
+        and not interaction.user.guild_permissions.administrator:
+            return await interaction.followup.send("❌ No tienes permisos.", ephemeral=True)
+
+        # ya tomada
         if message_id in self.cog.reviews:
             return await interaction.followup.send(
                 f"❌ Ya está siendo revisada por <@{self.cog.reviews[message_id]}>",
                 ephemeral=True
             )
 
-        # ✔ asignar revisor
+        # asignar revisor
         self.cog.reviews[message_id] = interaction.user.id
 
         if not interaction.message.embeds:
