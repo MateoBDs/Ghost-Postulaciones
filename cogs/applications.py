@@ -132,7 +132,7 @@ class ApplicationView(View):
         )
 
         # DM EN ESPERA
-        await try_dm(member, "📩 Tu postulación ha sido enviada. Estado: EN ESPERA.")
+        await try_dm(member, "Bienvenido al sistema de postulaciones, te tendremos informado del estado de tu postulación por aquí. Responde las preguntas que te estare haciendo en el ticket. ¡Suerte!.")
 
         await channel.send(f"👋 Hola {member.mention}, responde las preguntas.")
 
