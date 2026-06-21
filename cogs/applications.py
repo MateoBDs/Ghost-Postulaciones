@@ -181,47 +181,66 @@ class ApplicationView(View):
 # 📋 REVIEW VIEW
 # =========================
 class ReviewView(View):
-    def __init__(self, bot, cog, applicant_id, answers, channel_id):
+    def __init__(self, bot, cog, applicant_id, answers):
         super().__init__(timeout=None)
         self.bot = bot
         self.cog = cog
         self.applicant_id = applicant_id
         self.answers = answers
-        self.channel_id = channel_id
 
-        self.add_item(TakeReviewButton(cog))
+        self.add_item(TakeReviewButton(cog, applicant_id))
 
 
 # =========================
 # 🟡 TAKE REVIEW
 # =========================
 class TakeReviewButton(Button):
-    def __init__(self, cog):
+    def __init__(self, cog, applicant_id):
         super().__init__(
             label="Tomar revisión",
             style=discord.ButtonStyle.primary,
             emoji="🟡"
         )
         self.cog = cog
+        self.applicant_id = applicant_id
 
     async def callback(self, interaction: discord.Interaction):
 
-        await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
 
-        config = load_config()
-        staff_role = config['roles'].get('staff')
+    config = load_config()
+    staff_role = config['roles'].get('staff')
 
-        if not any(r.id == staff_role for r in interaction.user.roles) \
-        and not interaction.user.guild_permissions.administrator:
-            return await interaction.followup.send("❌ Sin permisos", ephemeral=True)
+    if not any(r.id == staff_role for r in interaction.user.roles) \
+    and not interaction.user.guild_permissions.administrator:
+        return await interaction.followup.send("❌ Sin permisos", ephemeral=True)
 
-        msg_id = interaction.message.id
+    msg_id = interaction.message.id
 
-        if msg_id in self.cog.reviews:
-            return await interaction.followup.send(
-                f"❌ Ya tomado por <@{self.cog.reviews[msg_id]['reviewer']}>",
-                ephemeral=True
-            )
+    if msg_id in self.cog.reviews:
+        return await interaction.followup.send("❌ Ya tomado", ephemeral=True)
+
+    self.cog.reviews[msg_id] = interaction.user.id
+
+    # 🔥 AQUÍ EL DM QUE TE FALTABA
+    applicant = interaction.guild.get_member(self.applicant_id)
+
+    if applicant:
+        try:
+            await applicant.send("🔍 Tu postulación está EN REVISIÓN.")
+        except:
+            pass
+
+    embed = interaction.message.embeds[0]
+    embed.add_field(
+        name="📋 Estado",
+        value=f"En revisión por {interaction.user.mention}",
+        inline=False
+    )
+
+    await interaction.message.edit(embed=embed, view=ReviewDecisionView(self.cog))
+
+    await interaction.followup.send("✔ Revisión tomada", ephemeral=True)
 
         # guardamos todo
         self.cog.reviews[msg_id] = {
