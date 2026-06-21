@@ -8,6 +8,16 @@ from utils.logger import log_application, send_log_embed
 
 
 # =========================
+# 📩 DM HELPER
+# =========================
+async def try_dm(user, text):
+    try:
+        await user.send(text)
+    except:
+        pass
+
+
+# =========================
 # 🔒 CLOSE TICKET VIEW
 # =========================
 class CloseTicketView(View):
@@ -43,12 +53,14 @@ class CloseTicketView(View):
 
 
 # =========================
-# 📦 COG PRINCIPAL
+# 📦 COG
 # =========================
 class ApplicationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.reviews = {}  # message_id -> reviewer_id
+
+        # message_id -> data completa
+        self.reviews = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -119,12 +131,15 @@ class ApplicationView(View):
             f"{member.mention} creó {channel.mention}"
         )
 
+        # DM EN ESPERA
+        await try_dm(member, "📩 Tu postulación ha sido enviada. Estado: EN ESPERA.")
+
         await channel.send(f"👋 Hola {member.mention}, responde las preguntas.")
 
         questions = load_questions()
         answers = {}
 
-        for i, q in enumerate(questions):
+        for q in questions:
 
             await channel.send(f"❓ {q}")
 
@@ -151,12 +166,11 @@ class ApplicationView(View):
             embed.add_field(name=q, value=a[:1024], inline=False)
 
         review_channel = guild.get_channel(config['channels']['review'])
-
         cog = interaction.client.get_cog("ApplicationCog")
 
         await review_channel.send(
             embed=embed,
-            view=ReviewView(self.bot, cog, member.id, answers)
+            view=ReviewView(self.bot, cog, member.id, answers, channel.id)
         )
 
 
@@ -164,12 +178,13 @@ class ApplicationView(View):
 # 📋 REVIEW VIEW
 # =========================
 class ReviewView(View):
-    def __init__(self, bot, cog, applicant_id, answers):
+    def __init__(self, bot, cog, applicant_id, answers, channel_id):
         super().__init__(timeout=None)
         self.bot = bot
         self.cog = cog
         self.applicant_id = applicant_id
         self.answers = answers
+        self.channel_id = channel_id
 
         self.add_item(TakeReviewButton(cog))
 
@@ -201,14 +216,16 @@ class TakeReviewButton(Button):
 
         if msg_id in self.cog.reviews:
             return await interaction.followup.send(
-                f"❌ Ya tomado por <@{self.cog.reviews[msg_id]}>",
+                f"❌ Ya tomado por <@{self.cog.reviews[msg_id]['reviewer']}>",
                 ephemeral=True
             )
 
-        self.cog.reviews[msg_id] = interaction.user.id
-
-        if not interaction.message.embeds:
-            return await interaction.followup.send("❌ Sin embed", ephemeral=True)
+        # guardamos todo
+        self.cog.reviews[msg_id] = {
+            "reviewer": interaction.user.id,
+            "applicant": None,
+            "channel": None
+        }
 
         embed = interaction.message.embeds[0]
         embed.add_field(
@@ -222,11 +239,17 @@ class TakeReviewButton(Button):
             view=ReviewDecisionView(self.cog)
         )
 
-        await interaction.followup.send("✔ Revisión tomada", ephemeral=True)
+        applicant_id = interaction.view.applicant_id
+        self.cog.reviews[msg_id]["applicant"] = applicant_id
+        self.cog.reviews[msg_id]["channel"] = interaction.view.channel_id
+
+        user = interaction.guild.get_member(applicant_id)
+
+        await try_dm(user, "🔍 Tu postulación está EN REVISIÓN.")
 
 
 # =========================
-# 🔵 DECISION VIEW
+# 🔵 DECISIÓN
 # =========================
 class ReviewDecisionView(View):
     def __init__(self, cog):
@@ -237,7 +260,7 @@ class ReviewDecisionView(View):
 
 
 # =========================
-# ❌ RECHAZAR
+# ❌ RECHAZO
 # =========================
 class RejectButton(Button):
     def __init__(self, cog):
@@ -251,17 +274,24 @@ class RejectButton(Button):
     async def callback(self, interaction: discord.Interaction):
 
         msg_id = interaction.message.id
+        data = self.cog.reviews.get(msg_id)
 
-        if self.cog.reviews.get(msg_id) != interaction.user.id:
-            return await interaction.response.send_message(
-                "❌ No eres el revisor",
-                ephemeral=True
-            )
+        if not data or data["reviewer"] != interaction.user.id:
+            return await interaction.response.send_message("❌ No eres el revisor", ephemeral=True)
 
-        await interaction.response.send_message(
-            "❌ Postulación rechazada",
-            ephemeral=True
-        )
+        guild = interaction.guild
+        user = guild.get_member(data["applicant"])
+
+        await try_dm(user, "❌ Tu postulación ha sido RECHAZADA.")
+
+        channel = guild.get_channel(data["channel"])
+        if channel:
+            await channel.delete()
+
+        await interaction.message.delete()
+        self.cog.reviews.pop(msg_id, None)
+
+        await interaction.response.send_message("❌ Rechazado", ephemeral=True)
 
 
 # =========================
@@ -279,17 +309,24 @@ class InterviewButton(Button):
     async def callback(self, interaction: discord.Interaction):
 
         msg_id = interaction.message.id
+        data = self.cog.reviews.get(msg_id)
 
-        if self.cog.reviews.get(msg_id) != interaction.user.id:
-            return await interaction.response.send_message(
-                "❌ No eres el revisor",
-                ephemeral=True
-            )
+        if not data or data["reviewer"] != interaction.user.id:
+            return await interaction.response.send_message("❌ No eres el revisor", ephemeral=True)
 
-        await interaction.response.send_message(
-            "🎤 Entrevista solicitada",
-            ephemeral=True
-        )
+        config = load_config()
+        guild = interaction.guild
+        user = guild.get_member(data["applicant"])
+
+        role_id = config['roles'].get('applicant')
+        role = guild.get_role(role_id)
+
+        if role and user:
+            await user.add_roles(role)
+
+        await try_dm(user, "🎤 Has pasado a ENTREVISTA. Un staff te contactará.")
+
+        await interaction.response.send_message("🎤 Entrevista enviada", ephemeral=True)
 
 
 # =========================
