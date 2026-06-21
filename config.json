@@ -3,18 +3,18 @@
     "applications_open": false,
     "setup_message_id": null,
     "channels": {
-        "applications": 0,
+        "applications": 1517577630587556114,
         "review": 0,
-        "logs": 0,
-        "closed_redirect": 0
+        "logs": 1518161559111729252,
+        "closed_redirect": 1517577630587556114
     },
     "roles": {
-        "staff": 0,
-        "applicant": 0,
-        "interviewer": 0
+        "staff": 1517577628641661006,
+        "applicant": 1518161924850712636,
+        "interviewer": 0 
     },
     "categories": {
-        "tickets": 0,
+        "tickets": 1518163187130699796,
         "interviews": 0
     },
     "embeds": {
